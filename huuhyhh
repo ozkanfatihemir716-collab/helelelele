@@ -1,0 +1,985 @@
+if not game:IsLoaded() then game.Loaded:Wait() end
+wait(1)
+
+local PL = game:GetService("Players")
+local lp = PL.LocalPlayer
+local PGui = lp:WaitForChild("PlayerGui")
+local RS = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+
+-- DİL SEÇİM EKRANI
+local lsGui = Instance.new("ScreenGui")
+lsGui.Name = "LanguageSelectorUI"
+lsGui.ResetOnSpawn = false
+lsGui.Parent = PGui
+
+local f = Instance.new("Frame", lsGui)
+f.Size = UDim2.new(0, 320, 0, 160)
+f.Position = UDim2.new(0.5, -160, 0.5, -80)
+f.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+f.BorderSizePixel = 0
+Instance.new("UICorner", f).CornerRadius = UDim.new(0, 8)
+local str = Instance.new("UIStroke", f)
+str.Color = Color3.fromRGB(50, 150, 255)
+str.Thickness = 2
+
+local txt = Instance.new("TextLabel", f)
+txt.Size = UDim2.new(1, 0, 0, 60)
+txt.BackgroundTransparency = 1
+txt.Text = "Select Language / Dil Seçin"
+txt.TextColor3 = Color3.new(1, 1, 1)
+txt.Font = Enum.Font.GothamBold
+txt.TextSize = 18
+
+local btnTr = Instance.new("TextButton", f)
+btnTr.Size = UDim2.new(0, 130, 0, 45)
+btnTr.Position = UDim2.new(0, 20, 1, -70)
+btnTr.Text = "Türkçe 🇹🇷"
+btnTr.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+btnTr.TextColor3 = Color3.new(1, 1, 1)
+btnTr.Font = Enum.Font.GothamBold
+btnTr.TextSize = 14
+Instance.new("UICorner", btnTr)
+
+local btnEn = Instance.new("TextButton", f)
+btnEn.Size = UDim2.new(0, 130, 0, 45)
+btnEn.Position = UDim2.new(1, -150, 1, -70)
+btnEn.Text = "English 🇬🇧"
+btnEn.BackgroundColor3 = Color3.fromRGB(50, 50, 200)
+btnEn.TextColor3 = Color3.new(1, 1, 1)
+btnEn.Font = Enum.Font.GothamBold
+btnEn.TextSize = 14
+Instance.new("UICorner", btnEn)
+
+local Lang = nil
+btnTr.MouseButton1Click:Connect(function() Lang = "TR" end)
+btnEn.MouseButton1Click:Connect(function() Lang = "EN" end)
+
+repeat wait() until Lang ~= nil
+lsGui:Destroy()
+
+local T = {}
+if Lang == "TR" then
+    T.Title = "NOVE HUB MM2"
+    T.AntiFling = "🛡️ Anti-Fling"
+    T.ESP = "👁️ ESP (Rol + İsim)"
+    T.GunOn = "🔫 Oto Silah Toplama"
+    T.AllKill = "🚨 Herkesi Öldür (Katil)"
+    T.Noclip = "👻 Noclip Modu"
+    T.InfJump = "🚀 Sonsuz Zıplama"
+    T.ClickTP = "🖱️ Dokunarak TP"
+    T.Aimlock = "🎯 Aimlock (Katil)"
+    T.FlingList = "🎯 Fling Listesi"
+    T.TpList = "📍 TP Listesi"
+    T.SpecList = "📺 İzleme Listesi"
+    T.StopSpec = "❌ İzlemeyi Durdur"
+    T.StopFling = "❌ Fling Durdur"
+    T.Settings = "⚙️ Ayarlar"
+    T.HubSize = "📐 Hub Boyutu"
+    T.HubColor = "🎨 Hub Rengi"
+    T.Small = "Küçük"
+    T.Medium = "Orta"
+    T.Large = "Büyük"
+    T.FlingActive = "Aktif Hedef: "
+    T.SheriffDead = "⚠️ ŞERİF ÖLDÜ!"
+else
+    T.Title = "NOVE HUB MM2"
+    T.AntiFling = "🛡️ Anti-Fling"
+    T.ESP = "👁️ ESP (Role + Name)"
+    T.GunOn = "🔫 Auto Get Gun"
+    T.AllKill = "🚨 All Kill (Murderer)"
+    T.Noclip = "Noclip Mode"
+    T.InfJump = "Infinite Jump"
+    T.ClickTP = "Tap to TP"
+    T.Aimlock = "🎯 Aimlock (Murderer)"
+    T.FlingList = "🎯 Fling List"
+    T.TpList = "TP List"
+    T.SpecList = "Spectate List"
+    T.StopSpec = "Stop Spectate"
+    T.StopFling = "Stop Fling"
+    T.Settings = "Settings"
+    T.HubSize = "Hub Size"
+    T.HubColor = "Hub Color"
+    T.Small = "Small"
+    T.Medium = "Medium"
+    T.Large = "Large"
+    T.FlingActive = "Active Target: "
+    T.SheriffDead = "⚠️ SHERIFF DIED!"
+end
+
+local function HRP(c) c = c or lp.Character; return c and c:FindFirstChild("HumanoidRootPart") end
+local function HUM(c) c = c or lp.Character; return c and c:FindFirstChildOfClass("Humanoid") end
+local function Alive(p) return p and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 end
+
+local G = {
+    AntiFling = false, ESP = false, Noclip = false, Gun = false, AllKill = false,
+    InfJump = false, ClickTP = false, Aimlock = false
+}
+
+local hubSettings = { width = 360, height = 420, color = Color3.fromRGB(0, 180, 255) }
+local ToggleButtons = {}
+local timers = {esp = 0, kill = 0, gun = 0}
+local spectateTarget = nil
+local spectateActive = false
+local aimTarget = nil
+
+-- FLING STATE
+local FlingTarget = nil
+local FlingThread = nil
+local FlingOldCFrame = nil  -- YENİ: Fling başlarken kaydedilen eski konum
+
+-- ==================== ANTIFLING SİSTEMİ ====================
+local antiFlingConnections = {}
+local antiFlingEnabled = false
+
+local function setupAntiFlingCharacter(character)
+    local function disableCollide(part)
+        if antiFlingEnabled and part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+    for _, part in ipairs(character:GetChildren()) do
+        disableCollide(part)
+    end
+    local childAddedConn = character.ChildAdded:Connect(disableCollide)
+    local steppedConn = RS.Stepped:Connect(function()
+        if antiFlingEnabled and character:IsDescendantOf(workspace) then
+            for _, part in ipairs(character:GetChildren()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end)
+    character.Destroying:Connect(function()
+        childAddedConn:Disconnect()
+        steppedConn:Disconnect()
+    end)
+end
+
+local function trackAntiFlingPlayer(player)
+    if player == lp then return end
+    local charAddedConn = player.CharacterAdded:Connect(setupAntiFlingCharacter)
+    if player.Character then
+        setupAntiFlingCharacter(player.Character)
+    end
+    antiFlingConnections[player] = charAddedConn
+end
+
+local function untrackAntiFlingPlayer(player)
+    if antiFlingConnections[player] then
+        antiFlingConnections[player]:Disconnect()
+        antiFlingConnections[player] = nil
+    end
+end
+
+local antiFlingPlayerAdded
+local antiFlingPlayerRemoving
+
+local function enableAntiFling()
+    if antiFlingEnabled then return end
+    antiFlingEnabled = true
+    for _, player in ipairs(PL:GetPlayers()) do
+        trackAntiFlingPlayer(player)
+    end
+    antiFlingPlayerAdded = PL.PlayerAdded:Connect(trackAntiFlingPlayer)
+    antiFlingPlayerRemoving = PL.PlayerRemoving:Connect(untrackAntiFlingPlayer)
+end
+
+local function disableAntiFling()
+    antiFlingEnabled = false
+    for player, conn in pairs(antiFlingConnections) do
+        conn:Disconnect()
+    end
+    antiFlingConnections = {}
+    if antiFlingPlayerAdded then antiFlingPlayerAdded:Disconnect() antiFlingPlayerAdded = nil end
+    if antiFlingPlayerRemoving then antiFlingPlayerRemoving:Disconnect() antiFlingPlayerRemoving = nil end
+end
+
+local function Rol(p)
+    if not p or not p.Character then return "M" end
+    local function chk(n) n = n:lower()
+        if n:find("knife") or n:find("murder") or n:find("blade") then return "K" end
+        if n:find("gun") or n:find("sheriff") or n:find("revolver") then return "S" end
+    end
+    for _, v in ipairs(p.Character:GetChildren()) do if v:IsA("Tool") then local r = chk(v.Name); if r then return r end end end
+    local bp = p:FindFirstChildOfClass("Backpack")
+    if bp then for _, v in ipairs(bp:GetChildren()) do if v:IsA("Tool") then local r = chk(v.Name); if r then return r end end end end
+    return "M"
+end
+
+local RR = {K = Color3.fromRGB(255, 50, 50), S = Color3.fromRGB(50, 150, 255), M = Color3.fromRGB(50, 255, 50)}
+local RI = {K = "KATIL", S = "SERIF", M = "MASUM"}
+
+-- ==================== ŞERİF ÖLÜM BİLDİRİMİ ====================
+local lastSheriffAlive = false
+for _, p in pairs(PL:GetPlayers()) do
+    if p ~= lp and Alive(p) and Rol(p) == "S" then
+        lastSheriffAlive = true
+        break
+    end
+end
+
+task.spawn(function()
+    while true do
+        local anySheriffAlive = false
+        for _, p in pairs(PL:GetPlayers()) do
+            if p ~= lp and Alive(p) and Rol(p) == "S" then
+                anySheriffAlive = true
+                break
+            end
+        end
+        if lastSheriffAlive and not anySheriffAlive then
+            local notifGui = Instance.new("ScreenGui", PGui)
+            notifGui.Name = "SheriffNotif"
+            notifGui.ResetOnSpawn = false
+
+            local notif = Instance.new("TextLabel", notifGui)
+            notif.Size = UDim2.new(0, 400, 0, 50)
+            notif.Position = UDim2.new(0.5, -200, 0.15, 0)
+            notif.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+            notif.BackgroundTransparency = 0.1
+            notif.Text = T.SheriffDead
+            notif.TextColor3 = Color3.fromRGB(0, 0, 0)
+            notif.Font = Enum.Font.GothamBold
+            notif.TextSize = 20
+            Instance.new("UICorner", notif).CornerRadius = UDim.new(0, 8)
+            local notifStroke = Instance.new("UIStroke", notif)
+            notifStroke.Color = Color3.fromRGB(255, 255, 0)
+            notifStroke.Thickness = 2
+
+            task.spawn(function()
+                task.wait(3)
+                pcall(function() notifGui:Destroy() end)
+            end)
+        end
+        lastSheriffAlive = anySheriffAlive
+        task.wait(0.5)
+    end
+end)
+
+-- ==================== FLING MOTORU (Network Ownership Fix) ====================
+local function stopFling()
+    FlingTarget = nil
+    if FlingThread then
+        pcall(function() task.cancel(FlingThread) end)
+        FlingThread = nil
+    end
+    -- KENDİ KARAKTERİMİZİ ESKİ KONUMA DÖNDÜR
+    if FlingOldCFrame and lp.Character then
+        local curHrp = HRP(lp.Character)
+        if curHrp then
+            pcall(function()
+                curHrp.CFrame = FlingOldCFrame
+                curHrp.AssemblyLinearVelocity = Vector3.zero
+                curHrp.AssemblyAngularVelocity = Vector3.zero
+            end)
+        end
+    end
+    FlingOldCFrame = nil
+    if lp.Character then
+        for _, part in ipairs(lp.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                pcall(function() part.CanCollide = true end)
+            end
+        end
+        local hum = HUM(lp.Character)
+        if hum then
+            pcall(function()
+                hum.PlatformStand = false
+                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end)
+        end
+    end
+end
+
+local function startFling(target)
+    stopFling()
+    if not target or not Alive(target) then return end
+    FlingTarget = target
+
+    FlingThread = task.spawn(function()
+        local myChar = lp.Character
+        local myHrp = HRP(myChar)
+        local myHum = HUM(myChar)
+        if not myHrp or not myHum then return end
+
+        -- ESKİ KONUMU GLOBAL DEĞİŞKENDE SAKLA (stopFling'de kullanılacak)
+        FlingOldCFrame = myHrp.CFrame
+
+        local targetChar = target.Character
+        local targetHrp = targetChar and HRP(targetChar)
+        local targetHum = targetChar and HUM(targetChar)
+        if not targetHrp then return end
+        local targetOldPos = targetHrp.Position
+
+        for _, part in ipairs(myChar:GetDescendants()) do
+            if part:IsA("BasePart") then
+                pcall(function() part.CanCollide = false end)
+            end
+        end
+
+        pcall(function()
+            myHum.PlatformStand = true
+            myHum:ChangeState(Enum.HumanoidStateType.Physics)
+        end)
+
+        local startTime = tick()
+        local maxDuration = 2.0
+        local flyDistance = 150
+
+        while FlingTarget and Alive(FlingTarget) and lp.Character and (tick() - startTime) < maxDuration do
+            local tHrp = HRP(FlingTarget.Character)
+            local tHum = HUM(FlingTarget.Character)
+            if not tHrp then break end
+
+            pcall(function()
+                tHrp:SetNetworkOwner(nil)
+            end)
+
+            if tHum then
+                pcall(function() tHum.PlatformStand = true end)
+            end
+
+            myHrp.CFrame = tHrp.CFrame
+
+            tHrp.AssemblyLinearVelocity = Vector3.new(
+                math.random(-3000, 3000),
+                math.random(6000, 9000),
+                math.random(-3000, 3000)
+            )
+            tHrp.AssemblyAngularVelocity = Vector3.new(
+                math.random(-80000, 80000),
+                math.random(-80000, 80000),
+                math.random(-80000, 80000)
+            )
+
+            for _, part in ipairs(FlingTarget.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part ~= tHrp then
+                    pcall(function()
+                        part.CanCollide = false
+                        part.AssemblyLinearVelocity = Vector3.new(
+                            math.random(-2000, 2000),
+                            math.random(5000, 8000),
+                            math.random(-2000, 2000)
+                        )
+                        part.AssemblyAngularVelocity = Vector3.new(
+                            math.random(-50000, 50000),
+                            math.random(-50000, 50000),
+                            math.random(-50000, 50000)
+                        )
+                    end)
+                end
+            end
+
+            myHrp.AssemblyLinearVelocity = Vector3.new(
+                math.random(-5000, 5000),
+                math.random(5000, 10000),
+                math.random(-5000, 5000)
+            )
+            myHrp.AssemblyAngularVelocity = Vector3.new(
+                math.random(-500000, 500000),
+                math.random(-500000, 500000),
+                math.random(-500000, 500000)
+            )
+
+            -- ESKİ KONUMA DÖN (döngü içinde sürekli)
+            if lp.Character and FlingOldCFrame then
+                local curHrp = HRP(lp.Character)
+                if curHrp then
+                    curHrp.CFrame = FlingOldCFrame
+                    curHrp.AssemblyLinearVelocity = Vector3.zero
+                    curHrp.AssemblyAngularVelocity = Vector3.zero
+                end
+            end
+
+            task.wait(0.03)
+
+            local currentPos = tHrp.Position
+            if (currentPos - targetOldPos).Magnitude >= flyDistance then
+                break
+            end
+        end
+
+        if targetChar and targetHrp then
+            pcall(function()
+                targetHrp:SetNetworkOwner(target)
+            end)
+        end
+
+        if targetHum then
+            pcall(function() targetHum.PlatformStand = false end)
+        end
+
+        -- SON TEMİZLİK
+        if lp.Character and FlingOldCFrame then
+            local curHrp = HRP(lp.Character)
+            if curHrp then
+                curHrp.CFrame = FlingOldCFrame
+                curHrp.AssemblyLinearVelocity = Vector3.zero
+                curHrp.AssemblyAngularVelocity = Vector3.zero
+            end
+            for _, part in ipairs(lp.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    pcall(function() part.CanCollide = true end)
+                end
+            end
+            local myHum2 = HUM(lp.Character)
+            if myHum2 then
+                pcall(function()
+                    myHum2.PlatformStand = false
+                    myHum2:ChangeState(Enum.HumanoidStateType.GettingUp)
+                end)
+            end
+        end
+
+        FlingThread = nil
+        FlingTarget = nil
+        FlingOldCFrame = nil
+    end)
+end
+
+-- ==================== ESP DÖNGÜSÜ ====================
+local function updateESP()
+    for _, p in pairs(PL:GetPlayers()) do
+        if p.Character then
+            local old = p.Character:FindFirstChild("MESP")
+            if old then old:Destroy() end
+        end
+    end
+    for _, v in pairs(workspace:GetDescendants()) do
+        local g = v:FindFirstChild("GESP")
+        if g then g:Destroy() end
+    end
+
+    if not G.ESP then return end
+
+    for _, p in pairs(PL:GetPlayers()) do
+        if p ~= lp and p.Character and Alive(p) then
+            local ch = p.Character
+            local folder = Instance.new("Folder", ch)
+            folder.Name = "MESP"
+
+            local role = Rol(p)
+            local color = RR[role]
+
+            local hl = Instance.new("Highlight", folder)
+            hl.Adornee = ch
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.OutlineTransparency = 0.2
+            hl.FillTransparency = 0.5
+            hl.FillColor = color
+            hl.OutlineColor = color
+
+            local head = ch:FindFirstChild("Head")
+            if head then
+                local bb = Instance.new("BillboardGui", folder)
+                bb.Name = "NameTag"
+                bb.Adornee = head
+                bb.Size = UDim2.new(4, 0, 1.2, 0)
+                bb.StudsOffset = Vector3.new(0, 2.5, 0)
+                bb.AlwaysOnTop = true
+
+                local label = Instance.new("TextLabel", bb)
+                label.Size = UDim2.new(1, 0, 1, 0)
+                label.BackgroundTransparency = 1
+                label.Text = p.Name .. " [" .. RI[role] .. "]"
+                label.TextColor3 = color
+                label.TextStrokeTransparency = 0.3
+                label.TextStrokeColor3 = Color3.new(0, 0, 0)
+                label.Font = Enum.Font.GothamBold
+                label.TextSize = 13
+            end
+        end
+    end
+
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") then
+            local n = v.Name:lower()
+            if n:find("coin") or n:find("gold") then
+                if not v:FindFirstChild("GESP") then
+                    local hl = Instance.new("Highlight", v)
+                    hl.Name = "GESP"
+                    hl.FillColor = Color3.fromRGB(255, 200, 0)
+                    hl.FillTransparency = 0.3
+                    hl.OutlineColor = Color3.fromRGB(255, 220, 0)
+                    hl.OutlineTransparency = 0
+                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                end
+            end
+        end
+    end
+end
+
+RS.Heartbeat:Connect(function(dt)
+    timers.esp = timers.esp + dt
+    if timers.esp >= 1.0 then
+        timers.esp = 0
+        updateESP()
+    end
+end)
+
+-- İzleme + Aimlock
+RS.RenderStepped:Connect(function()
+    if spectateActive and spectateTarget and spectateTarget.Character then
+        local h = spectateTarget.Character:FindFirstChildOfClass("Humanoid")
+        if h then pcall(function() Camera.CameraSubject = h end) end
+    elseif G.Aimlock and not spectateActive then
+        if not aimTarget or not Alive(aimTarget) or Rol(aimTarget) ~= "K" then
+            local closest = nil; local minDist = math.huge
+            for _, p in pairs(PL:GetPlayers()) do
+                if p ~= lp and Alive(p) and Rol(p) == "K" then
+                    local hrp = HRP(p.Character); local myHrp = HRP()
+                    if hrp and myHrp then
+                        local dist = (myHrp.Position - hrp.Position).Magnitude
+                        if dist < minDist then minDist = dist; closest = p end
+                    end
+                end
+            end
+            aimTarget = closest
+        end
+        if aimTarget and aimTarget.Character then
+            local head = aimTarget.Character:FindFirstChild("Head")
+            if head then Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position) end
+        end
+    else
+        aimTarget = nil
+    end
+end)
+
+-- Ana motor
+RS.Heartbeat:Connect(function(dt)
+    if G.Noclip and lp.Character then
+        for _, v in ipairs(lp.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+    end
+
+    if G.AllKill and Alive(lp) and Rol(lp) == "K" then
+        timers.kill = timers.kill + dt
+        if timers.kill >= 1.0 then
+            timers.kill = 0
+            local myHRP = HRP()
+            if myHRP then
+                for _, p in pairs(PL:GetPlayers()) do
+                    if p ~= lp and Alive(p) and Rol(p) ~= "K" then
+                        local eHRP = HRP(p.Character)
+                        if eHRP then eHRP.CFrame = myHRP.CFrame end
+                    end
+                end
+                local knife = lp.Character:FindFirstChild("Knife") or (lp:FindFirstChildOfClass("Backpack") and lp.Backpack:FindFirstChild("Knife"))
+                if knife then
+                    if knife.Parent ~= lp.Character then knife.Parent = lp.Character end
+                    pcall(function() knife:Activate() end)
+                end
+            end
+        end
+    end
+
+    if G.Gun and Alive(lp) and Rol(lp) ~= "K" then
+        timers.gun = timers.gun + dt
+        if timers.gun >= 0.2 then
+            timers.gun = 0
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v.Name == "GunDrop" or v.Name == "RevolverDrop" or (v.Name:lower():find("gun") and v.Parent == workspace) then
+                    local tg = v:IsA("BasePart") and v or v:FindFirstChild("Handle")
+                    if tg then
+                        local mh = HRP()
+                        if mh then
+                            local old = mh.CFrame
+                            mh.CFrame = tg.CFrame
+                            task.wait(0.25)
+                            mh.CFrame = old
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- TP
+local mouse = lp:GetMouse()
+UIS.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and UIS:IsKeyDown(Enum.KeyCode.LeftControl) and G.ClickTP then
+        local mh = HRP()
+        if mh and mouse.Hit then mh.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0)) end
+    end
+end)
+UIS.TouchTapInWorld:Connect(function(position, processed)
+    if processed or not G.ClickTP then return end
+    local unitRay = Camera:ScreenPointToRay(position.X, position.Y)
+    local raycastResult = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000)
+    if raycastResult then
+        local mh = HRP()
+        if mh then mh.CFrame = CFrame.new(raycastResult.Position + Vector3.new(0, 3, 0)) end
+    end
+end)
+
+UIS.JumpRequest:Connect(function()
+    if G.InfJump and lp.Character then
+        local h = HUM(); if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+-- ==================== ANA UI ====================
+local MainGui = Instance.new("ScreenGui", PGui)
+MainGui.Name = "YARHM_MainUI"; MainGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame", MainGui)
+MainFrame.Name = "ControlBarContainer"
+MainFrame.Size = UDim2.new(0, hubSettings.width, 0, hubSettings.height)
+MainFrame.Position = UDim2.new(0.5, -hubSettings.width/2, 0.4, -hubSettings.height/2)
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+MainFrame.BorderSizePixel = 0; MainFrame.Active = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+local MainStroke = Instance.new("UIStroke", MainFrame); MainStroke.Thickness = 2; MainStroke.Color = hubSettings.color
+
+local dragging, dragInput, dragStart, startPos
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = MainFrame.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    end
+end)
+MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+end)
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+local ControlBar = Instance.new("Frame", MainFrame)
+ControlBar.Size = UDim2.new(1, 0, 0, 42); ControlBar.BackgroundColor3 = Color3.fromRGB(18, 18, 26); ControlBar.BorderSizePixel = 0
+Instance.new("UICorner", ControlBar).CornerRadius = UDim.new(0, 10)
+
+local TitleLabel = Instance.new("TextLabel", ControlBar)
+TitleLabel.Size = UDim2.new(1, -50, 1, 0); TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+TitleLabel.BackgroundTransparency = 1; TitleLabel.Text = T.Title .. " <font color='rgb(0,220,255)'>Finetune</font>"
+TitleLabel.RichText = true; TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.Font = Enum.Font.GothamBold; TitleLabel.TextSize = 15; TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local FloatingButtonSetting = Instance.new("ScreenGui", PGui)
+FloatingButtonSetting.Name = "FloatingButtonSetting"; FloatingButtonSetting.ResetOnSpawn = false
+
+local FloatingButton = Instance.new("TextButton", FloatingButtonSetting)
+FloatingButton.Size = UDim2.new(0, 52, 0, 52); FloatingButton.Position = UDim2.new(0, 20, 0.5, -26)
+FloatingButton.BackgroundColor3 = Color3.fromRGB(14, 14, 22); FloatingButton.Text = "N"
+FloatingButton.TextColor3 = Color3.fromRGB(0, 200, 255); FloatingButton.Font = Enum.Font.GothamBlack
+FloatingButton.TextSize = 24; FloatingButton.BorderSizePixel = 0; FloatingButton.Visible = false
+Instance.new("UICorner", FloatingButton).CornerRadius = UDim.new(1, 0)
+
+local FloatStroke = Instance.new("UIStroke", FloatingButton); FloatStroke.Thickness = 2; FloatStroke.Color = hubSettings.color
+
+local fldrag, flinput, flstart, flpos
+FloatingButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        fldrag = true; flstart = input.Position; flpos = FloatingButton.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then fldrag = false end end)
+    end
+end)
+FloatingButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then flinput = input end
+end)
+UIS.InputChanged:Connect(function(input)
+    if input == flinput and fldrag then
+        local delta = input.Position - flstart
+        FloatingButton.Position = UDim2.new(flpos.X.Scale, flpos.X.Offset + delta.X, flpos.Y.Scale, flpos.Y.Offset + delta.Y)
+    end
+end)
+
+local ExitBtn = Instance.new("TextButton", ControlBar)
+ExitBtn.Size = UDim2.new(0, 26, 0, 26); ExitBtn.Position = UDim2.new(1, -34, 0.5, -13)
+ExitBtn.BackgroundColor3 = Color3.fromRGB(250, 60, 60); ExitBtn.Text = "✕"; ExitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ExitBtn.Font = Enum.Font.GothamBold; ExitBtn.TextSize = 12
+Instance.new("UICorner", ExitBtn).CornerRadius = UDim.new(1, 0)
+
+ExitBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false; FloatingButton.Visible = true end)
+FloatingButton.MouseButton1Click:Connect(function() FloatingButton.Visible = false; MainFrame.Visible = true end)
+
+local Grid = Instance.new("ScrollingFrame", MainFrame)
+Grid.Size = UDim2.new(1, -24, 1, -65); Grid.Position = UDim2.new(0, 12, 0, 53)
+Grid.BackgroundTransparency = 1; Grid.ScrollBarThickness = 4; Grid.ScrollBarImageColor3 = Color3.fromRGB(0, 180, 255)
+Grid.AutomaticCanvasSize = Enum.AutomaticSize.Y; Grid.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+local layout = Instance.new("UIListLayout", Grid); layout.Padding = UDim.new(0, 8); layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local function CreateMenuToggle(text, propName)
+    local btn = Instance.new("TextButton", Grid)
+    btn.Size = UDim2.new(1, -6, 0, 42); btn.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+    btn.Font = Enum.Font.GothamBold; btn.TextSize = 13; btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    local strk = Instance.new("UIStroke", btn); strk.Thickness = 1.5
+    local statusInd = Instance.new("Frame", btn); statusInd.Size = UDim2.new(0, 8, 0, 8); statusInd.Position = UDim2.new(1, -22, 0.5, -4)
+    Instance.new("UICorner", statusInd).CornerRadius = UDim.new(1, 0)
+    local function updateVisual()
+        btn.Text = "  " .. text; btn.TextXAlignment = Enum.TextXAlignment.Left
+        if G[propName] then
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255); strk.Color = Color3.fromRGB(0, 220, 120); statusInd.BackgroundColor3 = Color3.fromRGB(0, 220, 120)
+        else
+            btn.TextColor3 = Color3.fromRGB(150, 150, 160); strk.Color = Color3.fromRGB(40, 40, 50); statusInd.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+        end
+    end
+    btn.MouseButton1Click:Connect(function()
+        G[propName] = not G[propName]
+        updateVisual()
+        if propName == "Aimlock" then aimTarget = nil end
+        if propName == "AntiFling" then
+            if G.AntiFling then enableAntiFling() else disableAntiFling() end
+        end
+    end)
+    updateVisual()
+    ToggleButtons[propName] = { button = btn, updateVisual = updateVisual }
+end
+
+local function CreateMenuButton(text, callback)
+    local btn = Instance.new("TextButton", Grid)
+    btn.Size = UDim2.new(1, -6, 0, 42); btn.BackgroundColor3 = Color3.fromRGB(24, 34, 54)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255); btn.Text = text; btn.Font = Enum.Font.GothamBold; btn.TextSize = 13; btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    local strk = Instance.new("UIStroke", btn); strk.Thickness = 1.5; strk.Color = Color3.fromRGB(0, 150, 255)
+    btn.MouseButton1Click:Connect(callback)
+end
+
+-- MENÜ
+CreateMenuToggle(T.AntiFling, "AntiFling")
+CreateMenuToggle(T.ESP, "ESP")
+CreateMenuToggle(T.GunOn, "Gun")
+CreateMenuToggle(T.AllKill, "AllKill")
+CreateMenuToggle(T.Noclip, "Noclip")
+CreateMenuToggle(T.InfJump, "InfJump")
+CreateMenuToggle(T.ClickTP, "ClickTP")
+CreateMenuToggle(T.Aimlock, "Aimlock")
+
+-- ==================== LİSTE FONKSİYONU ====================
+local function CreateListGui(name, titleText, color, fillFn, isFling)
+    if PGui:FindFirstChild(name) then PGui[name]:Destroy() end
+    local G2 = Instance.new("ScreenGui", PGui); G2.Name = name; G2.ResetOnSpawn = false
+
+    local F = Instance.new("Frame", G2)
+    F.Size = UDim2.new(0, 240, 0, 360)
+    F.Position = UDim2.new(0.5, (name == "PRTP" and 140 or (name == "PRFL" and -380 or -120)), 0.5, -180)
+    F.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+    F.Active = true; F.BorderSizePixel = 0
+    Instance.new("UICorner", F).CornerRadius = UDim.new(0, 8)
+    local fstr = Instance.new("UIStroke", F); fstr.Color = color; fstr.Thickness = 2
+
+    local closeBtn = Instance.new("TextButton", F)
+    closeBtn.Size = UDim2.new(0, 26, 0, 26); closeBtn.Position = UDim2.new(1, -32, 0, 8)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(230, 50, 50); closeBtn.Text = "✕"; closeBtn.TextColor3 = Color3.new(1, 1, 1)
+    closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextSize = 12
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+    closeBtn.MouseButton1Click:Connect(function()
+        if isFling then stopFling() end
+        G2:Destroy()
+    end)
+
+    local tl = Instance.new("TextLabel", F)
+    tl.Size = UDim2.new(1, -45, 0, 34); tl.Position = UDim2.new(0, 12, 0, 3)
+    tl.BackgroundTransparency = 1; tl.Text = titleText; tl.TextColor3 = color
+    tl.Font = Enum.Font.GothamBold; tl.TextSize = 13; tl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local activeLabel = nil
+    if isFling then
+        activeLabel = Instance.new("TextLabel", F)
+        activeLabel.Size = UDim2.new(1, -20, 0, 20)
+        activeLabel.Position = UDim2.new(0, 10, 0, 38)
+        activeLabel.BackgroundTransparency = 1
+        activeLabel.Text = T.FlingActive .. "-"
+        activeLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+        activeLabel.Font = Enum.Font.GothamBold
+        activeLabel.TextSize = 11
+        activeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    end
+
+    local SC = Instance.new("ScrollingFrame", F)
+    SC.Name = "SC"
+    SC.Size = UDim2.new(1, -16, 1, isFling and -110 or -60)
+    SC.Position = UDim2.new(0, 8, 0, isFling and 65 or 42)
+    SC.BackgroundTransparency = 1
+    SC.ScrollBarThickness = 3
+    SC.ScrollBarImageColor3 = color
+    SC.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    SC.CanvasSize = UDim2.new(0, 0, 0, 0)
+    local sclayout = Instance.new("UIListLayout", SC); sclayout.Padding = UDim.new(0, 5)
+
+    if isFling then
+        local stopBtn = Instance.new("TextButton", F)
+        stopBtn.Size = UDim2.new(1, -16, 0, 30)
+        stopBtn.Position = UDim2.new(0, 8, 1, -38)
+        stopBtn.BackgroundColor3 = Color3.fromRGB(160, 45, 45)
+        stopBtn.Text = T.StopFling
+        stopBtn.TextColor3 = Color3.new(1, 1, 1)
+        stopBtn.Font = Enum.Font.GothamBold
+        stopBtn.TextSize = 11
+        Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 5)
+        stopBtn.MouseButton1Click:Connect(function()
+            stopFling()
+            if activeLabel then activeLabel.Text = T.FlingActive .. "-" end
+        end)
+    elseif name == "PRSP" then
+        local stopBtn = Instance.new("TextButton", F)
+        stopBtn.Size = UDim2.new(1, -16, 0, 30)
+        stopBtn.Position = UDim2.new(0, 8, 1, -38)
+        stopBtn.BackgroundColor3 = Color3.fromRGB(160, 45, 45)
+        stopBtn.Text = T.StopSpec
+        stopBtn.TextColor3 = Color3.new(1, 1, 1)
+        stopBtn.Font = Enum.Font.GothamBold
+        stopBtn.TextSize = 11
+        Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 5)
+        stopBtn.MouseButton1Click:Connect(function()
+            spectateActive = false
+            if lp.Character and lp.Character:FindFirstChild("Humanoid") then
+                Camera.CameraSubject = lp.Character.Humanoid
+            end
+        end)
+    end
+
+    local d, i, s, p
+    F.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            d = true; s = input.Position; p = F.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then d = false end end)
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if d and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - s
+            F.Position = UDim2.new(p.X.Scale, p.X.Offset + delta.X, p.Y.Scale, p.Y.Offset + delta.Y)
+        end
+    end)
+
+    task.spawn(function()
+        while G2.Parent do
+            for _, child in pairs(SC:GetChildren()) do
+                if child:IsA("TextButton") then child:Destroy() end
+            end
+            for _, plr in pairs(PL:GetPlayers()) do
+                if plr ~= lp and Alive(plr) then
+                    local r = Rol(plr)
+                    local b = Instance.new("TextButton", SC)
+                    b.Size = UDim2.new(1, -4, 0, 34)
+                    b.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+                    b.Text = RI[r] .. " " .. plr.Name
+                    b.TextColor3 = RR[r]
+                    b.Font = Enum.Font.GothamBold
+                    b.TextSize = 12
+                    b.BorderSizePixel = 0
+                    b.TextXAlignment = Enum.TextXAlignment.Center
+                    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 5)
+                    b.MouseButton1Click:Connect(function()
+                        if isFling then
+                            startFling(plr)
+                            if activeLabel then activeLabel.Text = T.FlingActive .. plr.Name end
+                        else
+                            fillFn(plr)
+                            G2:Destroy()
+                        end
+                    end)
+                end
+            end
+            wait(1)
+        end
+    end)
+    return G2
+end
+
+-- FLING LİSTESİ
+CreateMenuButton(T.FlingList, function()
+    CreateListGui("PRFL", T.FlingList, Color3.fromRGB(255, 80, 80), nil, true)
+end)
+
+-- AYARLAR (Hub)
+local function CreateSettingsGui()
+    local settingGui = Instance.new("ScreenGui", PGui); settingGui.Name = "SettingsGui"; settingGui.ResetOnSpawn = false
+    local settingFrame = Instance.new("Frame", settingGui)
+    settingFrame.Size = UDim2.new(0, 280, 0, 200); settingFrame.Position = UDim2.new(0.5, -140, 0.5, -100)
+    settingFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18); settingFrame.Active = true
+    Instance.new("UICorner", settingFrame).CornerRadius = UDim.new(0, 8)
+    local settingStroke = Instance.new("UIStroke", settingFrame); settingStroke.Color = Color3.fromRGB(100, 180, 255); settingStroke.Thickness = 2
+    local settingHeader = Instance.new("Frame", settingFrame); settingHeader.Size = UDim2.new(1, 0, 0, 30); settingHeader.BackgroundColor3 = Color3.fromRGB(18, 18, 26)
+    Instance.new("UICorner", settingHeader).CornerRadius = UDim.new(0, 8)
+    local settingTitle = Instance.new("TextLabel", settingHeader); settingTitle.Size = UDim2.new(1, -30, 1, 0); settingTitle.Position = UDim2.new(0, 10, 0, 0)
+    settingTitle.BackgroundTransparency = 1; settingTitle.Text = T.Settings; settingTitle.TextColor3 = Color3.new(1, 1, 1)
+    settingTitle.Font = Enum.Font.GothamBold; settingTitle.TextSize = 13; settingTitle.TextXAlignment = Enum.TextXAlignment.Left
+    local settingClose = Instance.new("TextButton", settingHeader); settingClose.Size = UDim2.new(0, 22, 0, 22); settingClose.Position = UDim2.new(1, -26, 0.5, -11)
+    settingClose.BackgroundColor3 = Color3.fromRGB(200, 50, 50); settingClose.Text = "✕"; settingClose.TextColor3 = Color3.new(1, 1, 1)
+    settingClose.Font = Enum.Font.GothamBold; settingClose.TextSize = 10; Instance.new("UICorner", settingClose)
+    settingClose.MouseButton1Click:Connect(function() settingGui:Destroy() end)
+
+    local dragActive, dragStart, dragPos
+    settingHeader.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragActive = true; dragStart = input.Position; dragPos = settingFrame.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragActive = false end end)
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if dragActive and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            settingFrame.Position = UDim2.new(dragPos.X.Scale, dragPos.X.Offset + delta.X, dragPos.Y.Scale, dragPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    local yOffset = 40
+    local sizeLabel = Instance.new("TextLabel", settingFrame); sizeLabel.Size = UDim2.new(1, -20, 0, 20); sizeLabel.Position = UDim2.new(0, 10, 0, yOffset)
+    sizeLabel.BackgroundTransparency = 1; sizeLabel.Text = T.HubSize .. ":"; sizeLabel.TextColor3 = Color3.new(1, 1, 1)
+    sizeLabel.Font = Enum.Font.GothamBold; sizeLabel.TextSize = 12; sizeLabel.TextXAlignment = Enum.TextXAlignment.Left
+    yOffset = yOffset + 22
+    local sizes = {{name = T.Small, w = 320, h = 380}, {name = T.Medium, w = 360, h = 420}, {name = T.Large, w = 420, h = 480}}
+    for i, sz in ipairs(sizes) do
+        local btn = Instance.new("TextButton", settingFrame); btn.Size = UDim2.new(0, 75, 0, 25); btn.Position = UDim2.new(0, 10 + (i - 1) * 85, 0, yOffset)
+        btn.BackgroundColor3 = (hubSettings.width == sz.w) and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(50, 50, 60)
+        btn.Text = sz.name; btn.TextColor3 = Color3.new(1, 1, 1); btn.Font = Enum.Font.GothamBold; btn.TextSize = 11
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+        btn.MouseButton1Click:Connect(function()
+            hubSettings.width = sz.w; hubSettings.height = sz.h
+            MainFrame.Size = UDim2.new(0, hubSettings.width, 0, hubSettings.height)
+            MainFrame.Position = UDim2.new(0.5, -hubSettings.width / 2, 0.4, -hubSettings.height / 2)
+        end)
+    end
+    yOffset = yOffset + 32
+    local colorLabel = Instance.new("TextLabel", settingFrame); colorLabel.Size = UDim2.new(1, -20, 0, 20); colorLabel.Position = UDim2.new(0, 10, 0, yOffset)
+    colorLabel.BackgroundTransparency = 1; colorLabel.Text = T.HubColor .. ":"; colorLabel.TextColor3 = Color3.new(1, 1, 1)
+    colorLabel.Font = Enum.Font.GothamBold; colorLabel.TextSize = 12; colorLabel.TextXAlignment = Enum.TextXAlignment.Left
+    yOffset = yOffset + 22
+    local colors = {{name = "🔵", value = Color3.fromRGB(0, 150, 255)}, {name = "🟣", value = Color3.fromRGB(150, 50, 255)}, {name = "🟢", value = Color3.fromRGB(50, 200, 50)}, {name = "🟠", value = Color3.fromRGB(255, 120, 30)}, {name = "🔴", value = Color3.fromRGB(255, 50, 50)}, {name = "⚪", value = Color3.fromRGB(220, 220, 220)}}
+    for i, c in ipairs(colors) do
+        local cBtn = Instance.new("TextButton", settingFrame); cBtn.Size = UDim2.new(0, 35, 0, 25); cBtn.Position = UDim2.new(0, 10 + (i - 1) * 40, 0, yOffset)
+        cBtn.BackgroundColor3 = (hubSettings.color == c.value) and Color3.fromRGB(100, 100, 100) or Color3.fromRGB(30, 30, 35)
+        cBtn.Text = c.name; cBtn.Font = Enum.Font.GothamBold; cBtn.TextSize = 14; cBtn.BorderSizePixel = 0
+        Instance.new("UICorner", cBtn).CornerRadius = UDim.new(0, 4)
+        cBtn.MouseButton1Click:Connect(function()
+            hubSettings.color = c.value
+            MainStroke.Color = hubSettings.color
+            FloatStroke.Color = hubSettings.color
+            settingStroke.Color = hubSettings.color
+        end)
+    end
+end
+
+CreateMenuButton(T.Settings, CreateSettingsGui)
+
+-- TP ve Spec listeleri
+CreateMenuButton(T.TpList, function()
+    CreateListGui("PRTP", T.TpList, Color3.fromRGB(0, 180, 255), function(p)
+        if Alive(p) then
+            local ph = HRP(p.Character); local mh = HRP()
+            if ph and mh then mh.CFrame = ph.CFrame * CFrame.new(0, 0, 3) end
+        end
+    end, false)
+end)
+
+CreateMenuButton(T.SpecList, function()
+    CreateListGui("PRSP", T.SpecList, Color3.fromRGB(0, 220, 255), function(p)
+        spectateTarget = p
+        spectateActive = true
+    end, false)
+end)
+
+print("✅ NOVE HUB MM2 - Fling durdurulunca eski konuma dönüyor")
